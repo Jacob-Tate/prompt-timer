@@ -12,22 +12,21 @@ namespace game {
     }
 
     /**
-     * Ask the player for a string value. with a timer!
+     * Ask the player for a string value with a timer!
      * @param message The message to display on the text-entry screen
-     * @param answerLength The maximum number of characters the user can enter (1 - 24)
-     * @param timer The timer
+     * @param timeOut The time to timeOut
      */
     //% group="Gameplay"
     //% weight=10 help=game/ask-for-string-timer
-    //% blockId=gameaskforstringtimer block="ask for string %message || and timeout after %timer"
+    //% blockId=gameaskforstringtimer block="ask for string %message || and timeout after %timeOut"
     //% message.defl=""
-    //% timer.defl=0
-    //% timer.min=0
-    //% timer.max=24
-    //% group="Prompt_timer"
-    export function askForStringTimer(message: string, timer: number = 0) {
+    //% timeOut.defl=0
+    //% timeOut.min=0
+    //% timeOut.max=24
+    //% group="Prompt with Timer"
+    export function askForStringTimer(message: string, timeOut: number = 0) {
         let p = new game.Prompt_timer();
-        const result = p.show(message, 12, timer);
+        const result = p.show(message, 12, timeOut * 1000);
         return result;
     }
 
@@ -136,6 +135,8 @@ namespace game {
         private inputIndex: number;
         private blink: boolean;
         private frameCount: number;
+        private timerEnd: number;
+        private timerSprite: Sprite;
 
         constructor(theme?: PromptTheme) {
             if (theme) {
@@ -164,15 +165,16 @@ namespace game {
             this.message = message;
             this.answerLength = answerLength;
             this.inputIndex = 0;
+            this.timerEnd = game.currentScene().millis() + timeOut;
 
             controller._setUserEventsEnabled(false);
-            game.pushScene()
+            game.pushScene();
 
             this.draw();
             this.registerHandlers();
             this.confirmPressed = false;
 
-            pauseUntil(() => this.confirmPressed, 50);
+            pauseUntil(() => this.confirmPressed, timeOut);
 
             game.popScene();
             controller._setUserEventsEnabled(true);
@@ -181,10 +183,76 @@ namespace game {
         }
 
         private draw() {
+            this.drawTimerCheck();
             this.drawPromptText();
             this.drawKeyboard();
             this.drawInputarea();
             this.drawBottomBar();
+        }
+
+        private drawTimerCheck() {
+            if(this.timerEnd !== undefined)
+            {
+                const scene = game.currentScene();
+                const elapsed = this.timerEnd - scene.millis();
+                this.drawTimer(elapsed);
+                let t = elapsed / 1000;
+                if(t <= 0)
+                {
+                    t = 0;
+                    // Call handler??
+                    // Call game over??
+                }
+            }
+        }
+
+        private formatDecimal(val: number) {
+            val |= 0;
+            if (val < 10) {
+                return "0" + val;
+            }
+            return val.toString();
+        }
+
+        private drawTimer(millis: number) {
+            if (millis < 0) millis = 0;
+            millis |= 0;
+
+            const font = image.font8;
+            const smallFont = image.font5;
+            const seconds = Math.idiv(millis, 1000);
+            const width = font.charWidth * 5 - 2;
+            let left = (screen.width >> 1) - (width >> 1) + 1;
+            let color1 = info.fontColor();
+            let color2 = info.backgroundColor();
+
+            if (seconds < 10 && (seconds & 1) && !screen.isMono) {
+                const temp = color1;
+                color1 = color2;
+                color2 = temp;
+            }
+
+            const letter = image.create(CELL_WIDTH, CELL_HEIGHT);
+
+            if(this.timerSprite === undefined)
+            {
+                const t = sprites.create(letter, -1);
+                t.x = 155;
+                t.y = 5;
+
+                this.timerSprite = t;
+            }
+
+            const img = this.timerSprite.image;
+            img.fill(3);
+            if((Math.log(seconds) * Math.LOG10E + 1 | 0) != 1 && seconds != 0)
+            {
+                img.print(convertToText(seconds + 1), 0, LETTER_OFFSET_Y);
+            }
+            else
+            {
+                img.print(convertToText(seconds + 1), LETTER_OFFSET_X, LETTER_OFFSET_Y);
+            }
         }
 
         private drawPromptText() {
@@ -360,6 +428,8 @@ namespace game {
 
                     this.updateSelectedInput();
                 }
+
+                this.drawTimerCheck()
             })
         }
 
