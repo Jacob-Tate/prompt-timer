@@ -172,7 +172,7 @@ namespace game {
             this.registerHandlers();
             this.confirmPressed = false;
 
-            pauseUntil(() => this.confirmPressed, timeOut);
+            pauseUntil(() => this.confirmPressed, 50);
 
             game.popScene();
             controller._setUserEventsEnabled(true);
