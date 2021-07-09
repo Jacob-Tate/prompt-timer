@@ -12,25 +12,22 @@ namespace game {
     }
 
     /**
-     * Ask the player for a string value.
+     * Ask the player for a string value. with a timer!
      * @param message The message to display on the text-entry screen
      * @param answerLength The maximum number of characters the user can enter (1 - 24)
      * @param timer The timer
      */
     //% group="Gameplay"
     //% weight=10 help=game/ask-for-string-timer
-    //% blockId=gameaskforstringtimer block="ask for string %message || and max length %answerLength || and timer %timer"
+    //% blockId=gameaskforstringtimer block="ask for string %message || and timeout after %timer"
     //% message.defl=""
-    //% answerLength.defl="12"
-    //% answerLength.min=1
-    //% answerLength.max=24
     //% timer.defl=0
     //% timer.min=0
     //% timer.max=24
     //% group="Prompt_timer"
-    export function askForStringTimer(message: string, answerLength = 12, timer = 0) {
+    export function askForStringTimer(message: string, timer: number = 0) {
         let p = new game.Prompt_timer();
-        const result = p.show(message, answerLength, timer);
+        const result = p.show(message, 12, timer);
         return result;
     }
 
