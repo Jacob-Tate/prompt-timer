@@ -14,19 +14,25 @@ namespace game {
     /**
      * Ask the player for a string value with a timer!
      * @param message The message to display on the text-entry screen
-     * @param timeOut The time to timeOut
+     * @param answerLength The maximum number of characters the user can enter (1 - 24)
+     * @param timeOut The time to timeOut you can enter in seconds (0 - 99)
      */
     //% group="Gameplay"
     //% weight=10 help=game/ask-for-string-timer
-    //% blockId=gameaskforstringtimer block="ask for string %message || and timeout after %timeOut"
+    //% blockId=gameaskforstringtimer block="ask for string %message || and max length %answerLength and timeout after %timeOut"
     //% message.defl=""
+    //% answerLength.defl="12"
+    //% answerLength.min=1
+    //% answerLength.max=24
     //% timeOut.defl=0
     //% timeOut.min=0
-    //% timeOut.max=24
-    //% group="Prompt with Timer"
-    export function askForStringTimer(message: string, timeOut: number = 0) {
+    //% timeOut.max=99
+    //% group="Prompt with timer"
+    //% expandableArgumentMode="enabled"
+    export function askForStringWithTimer(message: string, answerLength: number = 12, timeOut: number = 0) {
+        // Note: We limit to 99 on the timer because it needs to fit in a single sprite frame
         let p = new game.Prompt_timer();
-        const result = p.show(message, 12, timeOut * 1000);
+        const result = p.show(message, answerLength, timeOut * 1000);
         return result;
     }
 
@@ -165,7 +171,10 @@ namespace game {
             this.message = message;
             this.answerLength = answerLength;
             this.inputIndex = 0;
-            this.timerEnd = game.currentScene().millis() + timeOut;
+
+            if (timeOut != 0) {
+                this.timerEnd = game.currentScene().millis() + timeOut;
+            }
 
             controller._setUserEventsEnabled(false);
             game.pushScene();
@@ -179,11 +188,17 @@ namespace game {
             game.popScene();
             controller._setUserEventsEnabled(true);
 
-            return this.result;
+            if(this.confirmPressed)
+            {
+                return this.result;
+            }
+            else
+            {
+                return null;
+            }
         }
 
         private draw() {
-            this.drawTimerCheck();
             this.drawPromptText();
             this.drawKeyboard();
             this.drawInputarea();
@@ -191,67 +206,33 @@ namespace game {
         }
 
         private drawTimerCheck() {
-            if(this.timerEnd !== undefined)
-            {
-                const scene = game.currentScene();
-                const elapsed = this.timerEnd - scene.millis();
-                this.drawTimer(elapsed);
-                let t = elapsed / 1000;
-                if(t <= 0)
-                {
-                    t = 0;
-                    // Call handler??
-                    // Call game over??
-                }
+            if(this.timerEnd !== undefined) {
+                this.drawTimer(this.timerEnd - game.currentScene().millis());
             }
-        }
-
-        private formatDecimal(val: number) {
-            val |= 0;
-            if (val < 10) {
-                return "0" + val;
-            }
-            return val.toString();
         }
 
         private drawTimer(millis: number) {
             if (millis < 0) millis = 0;
             millis |= 0;
-
-            const font = image.font8;
-            const smallFont = image.font5;
-            const seconds = Math.idiv(millis, 1000);
-            const width = font.charWidth * 5 - 2;
-            let left = (screen.width >> 1) - (width >> 1) + 1;
-            let color1 = info.fontColor();
-            let color2 = info.backgroundColor();
-
-            if (seconds < 10 && (seconds & 1) && !screen.isMono) {
-                const temp = color1;
-                color1 = color2;
-                color2 = temp;
-            }
-
+    
+            const seconds = Math.idiv(millis, 1000) + 1;
+            const secondsString = seconds.toString()
             const letter = image.create(CELL_WIDTH, CELL_HEIGHT);
 
-            if(this.timerSprite === undefined)
-            {
-                const t = sprites.create(letter, -1);
-                t.x = 155;
-                t.y = 5;
+            if(this.timerSprite === undefined) {
+                this.timerSprite = sprites.create(letter, -1);
 
-                this.timerSprite = t;
+                // Set to the top right corner of the screen
+                this.timerSprite.setPosition(155, 5);
             }
 
-            const img = this.timerSprite.image;
-            img.fill(3);
-            if((Math.log(seconds) * Math.LOG10E + 1 | 0) != 1 && seconds != 0)
-            {
-                img.print(convertToText(seconds + 1), 0, LETTER_OFFSET_Y);
+            this.timerSprite.image.fill(3);
+
+            if(secondsString.length != 1) {
+                this.timerSprite.image.print(secondsString, 0, LETTER_OFFSET_Y);
             }
-            else
-            {
-                img.print(convertToText(seconds + 1), LETTER_OFFSET_X, LETTER_OFFSET_Y);
+            else {
+                this.timerSprite.image.print(secondsString, LETTER_OFFSET_X, LETTER_OFFSET_Y);
             }
         }
 
@@ -290,12 +271,12 @@ namespace game {
 
             this.letters = [];
             for (let j = 0; j < 36; j++) {
-                const letter = image.create(CELL_WIDTH, CELL_HEIGHT);
+                const letter2 = image.create(CELL_WIDTH, CELL_HEIGHT);
 
                 const col2 = j % ALPHABET_ROW_LENGTH;
                 const row2 = Math.floor(j / ALPHABET_ROW_LENGTH);
 
-                const t = sprites.create(letter, -1);
+                const t = sprites.create(letter2, -1);
                 t.x = ROW_LEFT + col2 * CELL_WIDTH;
                 t.y = ALPHABET_TOP + row2 * CELL_HEIGHT;
 
@@ -490,18 +471,18 @@ namespace game {
                 if (this.inputIndex >= this.answerLength) return;
 
                 const index = this.cursorColumn + this.cursorRow * ALPHABET_ROW_LENGTH
-                const letter2 = getCharForIndex(index, this.upper);
+                const letter22 = getCharForIndex(index, this.upper);
 
                 if (!this.result) {
-                    this.result = letter2;
+                    this.result = letter22;
                 }
                 else {
-                    this.result += letter2;
+                    this.result += letter22;
                 }
 
                 const sprite = this.inputs[this.inputIndex];
                 this.changeInputIndex(1);
-                this.drawInput(sprite.image, letter2, this.theme.colorInput);
+                this.drawInput(sprite.image, letter22, this.theme.colorInput);
             }
         }
 
